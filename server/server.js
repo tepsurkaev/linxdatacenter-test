@@ -4,8 +4,11 @@ const jsonServer = require("json-server");
 const bodyParser = require("body-parser");
 const jwt = require("jsonwebtoken");
 const { body, validationResult } = require("express-validator");
+const authMiddleware = require("./authMiddleware");
 
 const { users } = JSON.parse(fs.readFileSync("./users.json", "utf-8"));
+
+const filteredUsers = users.filter((user) => user !== null);
 
 const server = jsonServer.create();
 
@@ -21,7 +24,7 @@ server.post(
     const errors = validationResult(req);
 
     if (!errors.isEmpty()) {
-      return res.status(400).json("Validation error");
+      return res.status(400).json("Не валидный email или пароль!");
     }
 
     let users = {
@@ -35,25 +38,27 @@ server.post(
         const { email, password, userName } = req.body;
 
         if (!email) {
-          return res.status(400).json("You have to set email");
+          return res.status(400).json("Необходимо указать email");
         }
 
         if (!password) {
-          return res.status(400).json("You have to set password");
+          return res.status(400).json("Необходимо указать пароль");
         }
 
         users = JSON.parse(data);
 
-        const candidate = JSON.parse(data).users.find(
-          (user) => user.email === email
-        );
+        console.log(filteredUsers.find((user) => user?.email === email));
+
+        const candidate = filteredUsers.find((user) => user?.email === email);
 
         if (candidate) {
-          return res.status(400).json("Email already exist");
+          return res
+            .status(400)
+            .json("Пользователь под таким email уже зарегистрирован!");
         }
 
         const newUser = {
-          id: JSON.parse(data).users.length + 1, // get the length of the users array and add 1 to it? for new id
+          id: filteredUsers.length + 1, // get the length of the users array and add 1 to it? for new id
           email,
           password,
           userName,
@@ -61,7 +66,7 @@ server.post(
 
         users.users.push(newUser);
 
-        const newUserToJSON = JSON.stringify(users);
+        const newUserToJSON = JSON.stringify(users, null, 2);
 
         fs.writeFile("./users.json", newUserToJSON, "utf-8", (err) => {
           if (err) {
@@ -76,14 +81,14 @@ server.post(
 );
 
 const createToken = (payload) => {
-  return jwt.sign(payload, process.env.SECRET_KEY, {
-    expiresIn: "1d",
+  return jwt.sign(payload, process.env.JWT_SECRET_KEY, {
+    expiresIn: process.env.JWT_EXPIRES_IN,
   });
 };
 
 const isRegistered = (email, password) => {
   return (
-    users.findIndex(
+    filteredUsers.findIndex(
       (user) => user.email === email && user.password === password
     ) !== -1
   );
@@ -93,19 +98,78 @@ server.post("/login", (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const candidate = users.find((user) => user.email === email);
+    if (!isRegistered(email, password)) {
+      return res.status(401).json("Неправильный email или пароль");
+    }
+
+    const candidate = filteredUsers.find((user) => user.email === email);
 
     const userName = candidate?.userName;
 
-    if (!isRegistered(email, password)) {
-      return res.status(401).json("Wrong email or password");
-    }
+    const id = candidate?.id;
 
-    const token = createToken({ email, password, userName });
+    const token = createToken({ email, password, userName, id });
     return res.status(200).json(token);
   } catch (e) {
-    return res.json(e);
+    return res.status(401).json(`Error: ${e.message}`);
   }
+});
+
+server.patch("/edit/:id", authMiddleware, (req, res) => {
+  const { userName } = req.body;
+  const { id } = req.params;
+
+  if (id !== req.user.id.toString()) {
+    return res.status(401).json("Нет доступа");
+  }
+
+  fs.readFile("./users.json", "utf-8", (err, data) => {
+    if (err) {
+      return res.json(`Read file error: ${err}`);
+    } else {
+      try {
+        const { users } = JSON.parse(data);
+
+        const filteredUsers = users.filter((user) => user !== null);
+
+        const candidate = filteredUsers[id - 1];
+
+        const checkingId = filteredUsers[id - 1].id === req.user.id;
+
+        const idToNumber = Number(id);
+
+        const updatedUser = {
+          id: idToNumber,
+          email: candidate.email,
+          password: candidate.password,
+          userName: userName,
+        };
+
+        delete filteredUsers[id - 1];
+
+        const updatedUsers = {
+          users: [...filteredUsers, updatedUser],
+        };
+
+        if (checkingId) {
+          fs.writeFile(
+            "./users.json",
+            JSON.stringify(updatedUsers, null, 2),
+            "utf-8",
+            (err) => {
+              if (err) {
+                return res.json({ error: err.toString() });
+              }
+            }
+          );
+        }
+      } catch (e) {
+        return res.json({ error: e.toString() });
+      }
+    }
+  });
+
+  return res.json("User name updated");
 });
 
 server.listen(8000, () => {

@@ -1,5 +1,10 @@
 {
   "users": [
-    { "id": 1, "email": "user1@mail.ru", "password": "user1", "userName": "user1" }
+    {
+      "id": 1,
+      "email": "user@mail.ru",
+      "password": "user",
+      "userName": "user"
+    }
   ]
 }
