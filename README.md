@@ -2,7 +2,7 @@
 
 ```shell
 git clone https://github.com/tepsurkaev/linxdatacenter-test
-cd linxdatacenter-test && npm install
+cd linxdatacenter-test && npm install && cd server && npm install
 
-npm run dev
+cd .. && npm run dev
 ```
