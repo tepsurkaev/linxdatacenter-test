@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useAppDispatch } from "../app/hooks";
 import { Link } from "react-router-dom";
 import {
   AppBar,
@@ -11,6 +12,7 @@ import {
 import MenuIcon from "@mui/icons-material/Menu";
 import MenuPopover from "./MenuPopover";
 import { styled } from "@mui/material";
+import { logout } from "../features/users/usersSlice";
 
 const StyledBox = styled(Box)`
   display: flex;
@@ -20,7 +22,15 @@ const StyledBox = styled(Box)`
   }
 `;
 
+const StyledIconButton = styled(IconButton)`
+  @media (min-width: 575px) {
+    display: none;
+  }
+`;
+
 const Header = () => {
+  const dispatch = useAppDispatch();
+
   const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
 
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -31,12 +41,16 @@ const Header = () => {
     setAnchorEl(null);
   };
 
+  const handleLogout = () => {
+    dispatch(logout());
+  };
+
   const open = Boolean(anchorEl);
   const id = open ? "simple-popover" : undefined;
   return (
     <AppBar position="static">
       <Toolbar>
-        <IconButton
+        <StyledIconButton
           size="large"
           edge="start"
           color="inherit"
@@ -45,7 +59,7 @@ const Header = () => {
           onClick={handleClick}
         >
           <MenuIcon />
-        </IconButton>
+        </StyledIconButton>
         <MenuPopover
           id={id}
           open={open}
@@ -64,7 +78,9 @@ const Header = () => {
             </Typography>
           </Link>
 
-          <Button color="inherit">Выход</Button>
+          <Button onClick={handleLogout} color="inherit">
+            Выход
+          </Button>
         </StyledBox>
       </Toolbar>
     </AppBar>

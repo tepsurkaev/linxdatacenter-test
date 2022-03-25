@@ -1,4 +1,5 @@
 import React from "react";
+import { useAppDispatch } from "../app/hooks";
 import { Formik, Form, Field, useField, FieldAttributes } from "formik";
 import {
   Button,
@@ -9,6 +10,8 @@ import {
   FormControlLabel,
 } from "@mui/material";
 import { styled } from "@mui/material";
+import { getStayLoggedState } from "../features/users/usersSlice";
+import { login } from "../features/users/ActionCreators";
 
 interface FormValues {
   email: string;
@@ -81,6 +84,17 @@ const CustomTextField: React.FC<FieldAttributes<{}>> = ({
 };
 
 const LoginPage = () => {
+  const dispatch = useAppDispatch();
+
+  interface Data {
+    email: string;
+    password: string;
+  }
+
+  const handleLogin = (data: Data) => {
+    dispatch(login(data));
+  };
+
   return (
     <>
       <StyledTextBox>
@@ -102,9 +116,7 @@ const LoginPage = () => {
           };
 
           const validatePass = (password: string) => {
-            return String(password)
-              .toLowerCase()
-              .match(/^(?=.*[A-Za-z])(?=.*d)[A-Za-zd]{3,}$/);
+            return String(password).match(/^([A-Za-z]){3,}$/);
           };
 
           if (!validateEmail(values.email)) {
@@ -112,19 +124,19 @@ const LoginPage = () => {
           }
 
           if (!validatePass(values.password)) {
-            errors.password =
-              "Длина пароля должна быть минимум 3 символа, одна загланая буква и латиница";
+            errors.password = "Длина пароля должна быть минимум 3 символа";
           }
 
           return errors;
         }}
         onSubmit={(values, { setSubmitting }) => {
+          dispatch(getStayLoggedState(values.saveDataToLS));
           setSubmitting(true);
-          console.log(values);
+          handleLogin(values);
           setSubmitting(false);
         }}
       >
-        {({ isSubmitting, errors }: FormProps) => (
+        {({ isSubmitting }: FormProps) => (
           <StyledForm>
             <CustomTextField
               name="email"
